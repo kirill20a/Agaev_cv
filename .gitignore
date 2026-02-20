@@ -1,3 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+pythonenv*
+*.egg
+*.egg-info/
+dist/
+build/
 *.pyc
-*.backup
+*.pyo
+*.pyd
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.project
+.pydevproject
+.settings/
+*.sublime-*
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# Environments
+.env
+.venv
+venv/
+ENV/
+
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
 *.log
