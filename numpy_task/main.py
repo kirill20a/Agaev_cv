@@ -47,8 +47,9 @@ kl = k ** l
 
 assert np.all(kl == np.array([1, 4, 27, 64, 625]))
 
-m = np.array([2, 2, 2, 3, 3, 3])
-mc = np.var(m)
+m = np.array([2, 2, 2, 3, 3, 3])#np.var(m)=0,25
+
+mc = np.var(m, ddof=3)# или прибавить еще 0.25
 
 assert mc == 0.5
 
