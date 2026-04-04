@@ -1,70 +1,68 @@
-import matplotlib.pyplot as plt
 import numpy as np
 from skimage.measure import label, regionprops
+import matplotlib.pyplot as plt
+
+# Загрузка и бинаризация
+image = np.load("stars.npy")
+image = (image > 0).astype(int)
+
+# Ядра для поиска
+plus_kernel = np.array([[0, 1, 0],
+                        [1, 1, 1],
+                        [0, 1, 0]])
+
+cross_kernel = np.array([[1, 0, 1],
+                         [0, 1, 0],
+                         [1, 0, 1]])
+
 from scipy.ndimage import binary_erosion
 
-# Загрузка изображения
-image = np.load("stars.npy")
+# Находим центры звезд
+plus_centers = binary_erosion(image, plus_kernel)
+cross_centers = binary_erosion(image, cross_kernel)
 
-# Убеждаемся, что изображение бинарное
-if np.max(image) > 1:
-    image = (image > 0).astype(int)
+# Маркируем все объекты
+labeled = label(image)
+plus_count = 0
+cross_count = 0
 
-# Создание ядер для поиска плюса (+) и креста (X)
-def create_plus_kernel():
-    """Плюс: горизонтальная и вертикальная линии"""
-    kernel = np.zeros((3, 3), dtype=int)
-    kernel[1, :] = 1  # горизонталь
-    kernel[:, 1] = 1  # вертикаль
-    return kernel
+# Проверяем каждый объект
+for region in regionprops(labeled):
+    # Координаты объекта
+    minr, minc, maxr, maxc = region.bbox
+    height = maxr - minr
+    width = maxc - minc
+    
+    # Пропускаем прямоугольники и квадраты (отношение сторон близко к 1)
+    if height > 5 and width > 5 and 0.8 <= height/width <= 1.2:
+        continue  # Это квадрат или прямоугольник
+    
+    # Проверяем, есть ли в объекте центр плюса или креста
+    coords = region.coords
+    for y, x in coords:
+        if plus_centers[y, x]:
+            plus_count += 1
+            break
+        elif cross_centers[y, x]:
+            cross_count += 1
+            break
 
-def create_cross_kernel():
-    """Крест: диагональные линии"""
-    kernel = np.zeros((3, 3), dtype=int)
-    kernel[0, 0] = 1
-    kernel[1, 1] = 1
-    kernel[2, 2] = 1
-    kernel[0, 2] = 1
-    kernel[2, 0] = 1
-    return kernel
-
-# Поиск плюсов и крестов с помощью эрозии
-plus_kernel = create_plus_kernel()
-cross_kernel = create_cross_kernel()
-
-plus_matches = binary_erosion(image, plus_kernel)
-cross_matches = binary_erosion(image, cross_kernel)
-
-# Маркировка найденных объектов
-plus_labeled = label(plus_matches)
-cross_labeled = label(cross_matches)
-
-plus_count = np.max(plus_labeled)
-cross_count = np.max(cross_labeled)
-
-print("Результат анализа звездочек:")
-print("-" * 40)
-print(f"Плюсы (+):   {plus_count} шт.")
-print(f"Кресты (X):  {cross_count} шт.")
-print(f"Всего:       {plus_count + cross_count} шт.")
+print(f"Плюсы (+): {plus_count}")
+print(f"Кресты (X): {cross_count}")
+print(f"Всего звезд: {plus_count + cross_count}")
 
 # Визуализация
-plt.figure(figsize=(15, 5))
+fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+axes[0].imshow(image, cmap='gray')
+axes[0].set_title('Оригинал')
 
-# Оригинал
-plt.subplot(131)
-plt.imshow(image, cmap='gray')
-plt.title('Оригинальное изображение')
+# Показываем найденные звезды
+result = np.zeros_like(image)
+for region in regionprops(labeled):
+    if region.area < 50:  # Маленькие объекты - звезды
+        for coord in region.coords:
+            result[coord[0], coord[1]] = 1
 
-# Плюсы
-plt.subplot(132)
-plt.imshow(plus_labeled, cmap='tab20')
-plt.title(f'Плюсы (+): {plus_count} шт.')
-
-# Кресты
-plt.subplot(133)
-plt.imshow(cross_labeled, cmap='tab20')
-plt.title(f'Кресты (X): {cross_count} шт.')
-
-plt.tight_layout()
+axes[1].imshow(result, cmap='gray')
+axes[1].set_title(f'Найдено звезд: {plus_count + cross_count}')
 plt.show()
