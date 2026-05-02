@@ -196,17 +196,15 @@ def play_game():
     mode = input("Mode (1/2): ").strip()
     
     if mode == "2":
-        # Для 4 шаров можно использовать повторяющиеся цвета
+        game_mode = "4_square"
         secret = random.sample(available_colors, 3) + [random.choice(available_colors)]
         random.shuffle(secret)
     else:
-        # Для 3 шаров - только уникальные цвета (1 зеленый, 1 красный, 1 голубой)
-        secret = random.sample(available_colors, 3)  # random.sample гарантирует уникальность
-        random.shuffle(secret)  # Перемешиваем для случайного порядка
+        game_mode = "3_in_row"
+        secret = random.sample(available_colors, 3)
     
     print(f"Secret sequence: {secret}")
     print("Rules for 3 balls: each color must be unique (1 GREEN, 1 BLUE, 1 RED)")
-
     cam = cv2.VideoCapture(0)
     guessed = False
     guess_time = 0
@@ -245,61 +243,48 @@ def play_game():
         detected_colors_list = [b["color"] for b in balls]
         has_duplicates = len(detected_colors_list) != len(set(detected_colors_list))
         
+                # Отрисовка шаров
         for i, ball in enumerate(balls):
-            # Рисуем круг шара
-            if has_duplicates and mode != "2":
-                # Красная рамка для дубликатов в режиме 3 шаров
-                cv2.circle(frame, (ball["x"], ball["y"]), ball["radius"], (0, 0, 255), 3)
-            else:
-                cv2.circle(frame, (ball["x"], ball["y"]), ball["radius"], (0, 255, 255), 3)
-            
-            # Рисуем центр
+            cv2.circle(frame, (ball["x"], ball["y"]), ball["radius"], (0, 255, 255), 3)
             cv2.circle(frame, (ball["x"], ball["y"]), 5, (0, 0, 255), -1)
             
-            # Текст с фоном для лучшей видимости
+            # Текст с фоном
             text = str(ball["color"])
             text_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)[0]
             text_x = ball["x"] - text_size[0]//2
             text_y = ball["y"] - ball["radius"] - 15
             
-            # Рисуем фон для текста
-            if has_duplicates and mode != "2":
-                # Красный фон для дубликатов
-                cv2.rectangle(frame, 
-                             (text_x - 5, text_y - text_size[1] - 5),
-                             (text_x + text_size[0] + 5, text_y + 5),
-                             (0, 0, 255), -1)
-                text_color = (255, 255, 255)  # Белый текст на красном фоне
+            # Фон для текста
+            cv2.rectangle(frame, 
+                         (text_x - 5, text_y - text_size[1] - 5),
+                         (text_x + text_size[0] + 5, text_y + 5),
+                         (0, 0, 0), -1)
+            
+            # Цвет текста
+            if ball["color"] == "RED":
+                text_color = (0, 0, 255)
+            elif ball["color"] == "GREEN":
+                text_color = (0, 255, 0)
+            elif ball["color"] == "BLUE":
+                text_color = (255, 0, 0)
             else:
-                cv2.rectangle(frame, 
-                             (text_x - 5, text_y - text_size[1] - 5),
-                             (text_x + text_size[0] + 5, text_y + 5),
-                             (0, 0, 0), -1)  # Черный фон
-                
-                # Цвет текста в зависимости от цвета шара
-                if ball["color"] == "RED":
-                    text_color = (0, 0, 255)
-                elif ball["color"] == "GREEN":
-                    text_color = (0, 255, 0)
-                elif ball["color"] == "BLUE":
-                    text_color = (255, 0, 0)
-                else:
-                    text_color = (255, 255, 255)
+                text_color = (255, 255, 255)
             
             cv2.putText(frame, text, (text_x, text_y),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color, 2)
-        
+            
         # Предупреждение о дубликатах
         if has_duplicates and mode != "2":
             warning_text = "DUPLICATE COLORS! Need unique: GREEN, BLUE, RED"
             cv2.putText(frame, warning_text, (10, frame.shape[0] - 20),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
-            
-                # Проверка последовательности
+        balls = detect_balls(hsv, combined, game_mode)
+        
+        # В проверке тоже используем game_mode
         if len(balls) == len(secret) and not guessed:
             colors = [b["color"] for b in balls]
             
-            if mode == "2" and len(balls) >= 4:
+            if game_mode == "4_square" and len(balls) >= 4:
                 by_y = sorted(balls, key=lambda b: (b["y"], b["x"]))
                 if len(by_y) >= 4:
                     upper = sorted(by_y[:2], key=lambda b: b["x"])
